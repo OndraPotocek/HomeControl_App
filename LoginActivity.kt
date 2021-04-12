@@ -2,24 +2,21 @@ package com.example.homecontrol
 
 import android.content.Context
 import android.content.Intent
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.util.Log
 import android.view.View
-import android.widget.Button
-import android.widget.EditText
-import android.widget.TextView
-import android.widget.Toast
-import com.google.android.material.snackbar.Snackbar
+import android.widget.*
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat.startActivity
 import io.realm.Realm
 import org.eclipse.paho.android.service.MqttAndroidClient
 import org.eclipse.paho.client.mqttv3.*
-import org.w3c.dom.Text
-import java.lang.Exception
-import java.lang.IllegalArgumentException
+import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 import java.util.*
 
+
 const val MIME_TEXT_PLAIN = "text/plain"
+var username = ""
+var password = ""
 class LoginActivity : AppCompatActivity() {
 
     private lateinit var mqttClient: MqttAndroidClient
@@ -28,87 +25,98 @@ class LoginActivity : AppCompatActivity() {
         const val TAG = "AndroidMqttClient"
     }
 
-    private var controller: Boolean = false
+    var sucesfullyConnected: Boolean = true
 
     private var etUsername: EditText? = null
     private var etPassword: EditText? = null
     private var btnLogin: Button? = null
     private var tvWrongUsernameOrPasswordMessage: TextView? = null
+    private var pbLoading: ProgressBar? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_login)
+        //val realm = Realm.getDefaultInstance()
+
 
         initViews()
         this.btnLogin?.setOnClickListener {
-
+            this.pbLoading?.visibility = View.VISIBLE
             /*try {
                 realm.beginTransaction()
-                val user: LoggedUser
-                user = realm.createObject(LoggedUser::class.java)
+                val newId = UUID.randomUUID().toString()
+                val user: LoggedUser = realm.createObject(LoggedUser::class.java, newId)
                 user.username = etUsername?.text.toString()
                 user.password = etPassword?.text.toString()
                 realm.commitTransaction()
 
             }
-            catch (e: Exception) {Toast.makeText(this, "Chyba při zadávání uživatelského jména", Toast.LENGTH_SHORT).show()}*/
-            //connect(this)
-            //if (controller) {
-            val intent = Intent(this, MainActivity::class.java)
-            startActivity(intent)
-            //}
+            catch (e: Exception) {
+                Toast.makeText(this, "Nastala chyba při ukládání uživatelského jména do databáze", Toast.LENGTH_SHORT).show()}*/
+            connect()
+
 
         }
 
     }
 
-    /*fun connect(context: Context) {
-        val serverURI = "mqtt://webelias.site:8883"
-        mqttClient = MqttAndroidClient(context, serverURI, "kotlin_client")
-        mqttClient.setCallback(object : MqttCallback {
-            override fun messageArrived(topic: String?, message: MqttMessage?) {
-                Log.d(TAG, "Receive message: ${message.toString()} from topic: $topic")
-            }
 
-            override fun connectionLost(cause: Throwable?) {
-                Log.d(TAG, "Connection lost ${cause.toString()}")
-            }
-
-            override fun deliveryComplete(token: IMqttDeliveryToken?) {
-
-            }
-        })
-        val options = MqttConnectOptions()
-        options.userName = this.etUsername?.text.toString()
-        options.password = this.etPassword?.text.toString().toCharArray()
-
-        try {
-            mqttClient.connect(options, null, object : IMqttActionListener {
-                override fun onSuccess(asyncActionToken: IMqttToken?) {
-                    Log.d(TAG, "Connection success")
-                    controller = true
-                }
-
-                override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
-                    Log.d(TAG, "Connection failure")
-                    displayWrongUsernameOrPasswordMessage()
-                }
-            })
-        } catch (e: MqttException) {
-            e.printStackTrace()
-
-        }
-
-    }
-
-    private fun displayWrongUsernameOrPasswordMessage(){
-        this.tvWrongUsernameOrPasswordMessage?.setTransitionVisibility(View.VISIBLE)
-    }*/
 
     private fun initViews(){
         this.etUsername = findViewById(R.id.et_username)
         this.etPassword = findViewById(R.id.et_password)
         this.btnLogin = findViewById(R.id.btn_login)
         this.tvWrongUsernameOrPasswordMessage = findViewById(R.id.tv_wrong_username_or_password_messge)
+        this.pbLoading = findViewById(R.id.loading)
     }
+
+
+
+    fun connect(){
+
+
+
+        val broker: String   = "tcp://webelias.site:1883"
+        val clientId: String = this.etUsername?.text.toString()
+        val persistence = MemoryPersistence()
+
+
+        try {
+            val sampleClient = MqttClient(broker, clientId, persistence)
+            val connOpts = MqttConnectOptions()
+            connOpts.userName = this.etUsername?.text.toString()
+            connOpts.password = this.etPassword?.text.toString().toCharArray()
+            connOpts.setCleanSession(true)
+            sampleClient.connect(connOpts)
+            sampleClient.disconnect()
+
+        }
+        catch(e: MqttException) {
+            this.tvWrongUsernameOrPasswordMessage?.visibility = View.VISIBLE
+            this.pbLoading?.visibility = View.INVISIBLE
+            this.sucesfullyConnected = false
+
+        }
+        if (sucesfullyConnected){
+            this.pbLoading?.visibility = View.INVISIBLE
+            startMainActivity()
+        }
+
+
+
+    }
+
+    private fun startMainActivity(){
+        val intent = Intent(this, MainActivity::class.java)
+        username = etUsername?.text.toString()
+        password = etPassword?.text.toString()
+        startActivity(intent)
+
+    }
+
+
+
+
+
 
 }

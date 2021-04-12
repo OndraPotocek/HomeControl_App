@@ -5,16 +5,22 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.nfc.NdefMessage
 import android.nfc.NfcAdapter
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import io.realm.Realm
-import java.lang.Exception
+import io.realm.RealmConfiguration
+import io.realm.RealmObject
+import org.eclipse.paho.client.mqttv3.MqttClient
+import org.eclipse.paho.client.mqttv3.MqttConnectOptions
+import org.eclipse.paho.client.mqttv3.MqttException
+import org.eclipse.paho.client.mqttv3.MqttMessage
+import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 
 
 class MainActivity : AppCompatActivity() {
@@ -23,6 +29,7 @@ class MainActivity : AppCompatActivity() {
     private var actualUsername: TextView? = null
     private var nfcAdapter: NfcAdapter? = null
     private var incomingHash: String? = null
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -34,7 +41,7 @@ class MainActivity : AppCompatActivity() {
         val addNewTag : FloatingActionButton = findViewById(R.id.addTag)
         addNewTag.setOnClickListener {
             val intent = Intent(this, AddNewTag::class.java)
-
+            //intent.putExtra("Username", username)
             startActivity(intent)
         }
 
@@ -55,15 +62,23 @@ class MainActivity : AppCompatActivity() {
 
     private fun initViews(){
         actualUsername = findViewById(R.id.tv_activity_main_username)
-        /*val realm = Realm.getDefaultInstance()
-        val activeUser = realm.where(LoggedUser::class.java).findFirst()
-        actualUsername?.text = activeUser?.username.toString()*/
+
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         receiveMessageFromDevice(intent)
-        //TODO ("sending incomingHash to the server")
+        val realm = Realm.getDefaultInstance()
+
+        val tags = mutableListOf<MyTag>()
+        tags += realm.where(MyTag::class.java).findAll()
+
+        for (i in tags){
+            if (i.hashName.equals(incomingHash)){
+                send(i.name.toString())
+            }
+        }
+
     }
 
     override fun onPause() {
@@ -78,6 +93,8 @@ class MainActivity : AppCompatActivity() {
         receiveMessageFromDevice(intent)
 
         val realm = Realm.getDefaultInstance()
+
+
 
         val tags = mutableListOf<MyTag>()
 
@@ -105,7 +122,7 @@ class MainActivity : AppCompatActivity() {
                 val inNdefRecords = inNdefMessage.records
                 val ndefRecord_0 = inNdefRecords[0]
 
-                var inMessage = String(ndefRecord_0.payload)
+                val inMessage = String(ndefRecord_0.payload)
                 incomingHash = inMessage
             }
         }
@@ -141,6 +158,37 @@ class MainActivity : AppCompatActivity() {
 
     private fun disableForegroundDispatch(activity: AppCompatActivity, adapter: NfcAdapter?) {
         adapter?.disableForegroundDispatch(activity)
+    }
+
+    private fun send(tagName: String){
+        val topic: String    = "users/OndrejPotocek/"+tagName
+        val content: String  = "2"
+        val qos: Int         = 2;
+        val broker: String   = "tcp://webelias.site:1883"
+        val clientId: String = username
+        val persistence = MemoryPersistence()
+
+
+        try {
+            val sampleClient = MqttClient(broker, clientId, persistence)
+            val connOpts = MqttConnectOptions()
+            connOpts.userName = username
+            connOpts.password = password.toCharArray()
+            connOpts.setCleanSession(true)
+
+            sampleClient.connect(connOpts)
+
+            val message = MqttMessage(content.toByteArray())
+            message.setQos(qos)
+            sampleClient.publish(topic, message)
+
+            sampleClient.disconnect()
+
+
+        }
+        catch(e: MqttException) {
+            Toast.makeText(this, "Chyba při odesílání na server!", Toast.LENGTH_SHORT).show()
+        }
     }
 
 

@@ -16,6 +16,7 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.Toast
 import io.realm.Realm
+import io.realm.RealmConfiguration
 import java.io.IOException
 import java.lang.Exception
 import java.math.BigInteger
@@ -24,13 +25,20 @@ import java.util.*
 
 class AddNewTag : AppCompatActivity() {
     private var mNfcAdapter: NfcAdapter? = null
+
+
+
     private val realm = Realm.getDefaultInstance()
     private var etName: EditText? = null
     private var btnBack: Button? = null
+    private var username: String? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_add_new_tag)
         mNfcAdapter = NfcAdapter.getDefaultAdapter(this)
+
+
 
         val isNfcSupported: Boolean = this.mNfcAdapter != null
         if (!isNfcSupported) {
@@ -42,6 +50,9 @@ class AddNewTag : AppCompatActivity() {
             Toast.makeText(this, "NFC není zapnuté", Toast.LENGTH_LONG).show()
         }
         initViews()
+        this.btnBack?.setOnClickListener {
+            finish()
+        }
     }
 
     private  fun initViews(){
@@ -65,7 +76,7 @@ class AddNewTag : AppCompatActivity() {
 
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
-        val hashName = md5(this.etName?.text.toString())
+        val hashName = md5(this.etName?.text.toString()+username)
         val messageWrittenSuccessfully = createNFCMessage(hashName, intent)
 
         if (messageWrittenSuccessfully){

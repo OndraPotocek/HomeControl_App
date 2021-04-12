@@ -3,6 +3,7 @@ import android.app.Application
 import android.content.Intent
 import android.widget.Toast
 import io.realm.Realm
+import io.realm.RealmConfiguration
 import java.lang.Exception
 
 
@@ -11,6 +12,7 @@ class MyApplication: Application() {
     override fun onCreate(){
         super.onCreate()
         Realm.init(this)
+
         /*if (!userIsRegistered()){
             val intent = Intent(this, LoginActivity::class.java)
             startActivity(intent)*/
